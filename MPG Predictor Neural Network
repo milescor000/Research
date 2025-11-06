@@ -1,16 +1,19 @@
 # ME EN 595R DL HW1
 # Corey Miles
 
-# import necessary libraries
-import torch
-from torch import optim
-import torch.nn as nn
-from torch.utils.data import TensorDataset, random_split, DataLoader
-import pandas as pd
-import numpy as np
-import sklearn as sk
-from sklearn.preprocessing import StandardScaler
-import matplotlib.pyplot as plt
+#---Import Necessary Libraries-------------------------------------------------------------------------------------------------------------------------------------#
+
+import torch  # library for general neural network needs
+from torch import optim  # optimization functions
+import torch.nn as nn  # library for neural network objects
+from torch.utils.data import TensorDataset, random_split, DataLoader  # dataset preparation
+import pandas as pd  # library for data reading
+import numpy as np  # library for general math
+from sklearn.preprocessing import StandardScaler  # library for standardizing features and targets
+import matplotlib.pyplot as plt  # library for plotting
+
+
+#---Data Preparation-----------------------------------------------------------------------------------------------------------------------------------------------#
 
 # assign column names
 column_names = [
@@ -25,119 +28,142 @@ df = pd.read_csv("auto-mpg.data", sep=r"\s+", names=column_names)
 df = df.drop(columns=["car_names"])
 
 # separate feature and target arrays
-features = df.drop(columns=["mpg"]).values
-targets = df["mpg"].values.reshape(-1, 1)
+'''
+Features: input values
+Targets: output value
+'''
+features = df.drop(columns=["mpg"]).values  # removes mpg column and converts to an array
+targets = df["mpg"].values.reshape(-1, 1)  # creates array with only mpg column and turns it into a column vector
 
 # standardize values
-features_scaler = StandardScaler()
-features_scaled = features_scaler.fit_transform(features)
-
-targets_scaler = StandardScaler()
-targets_scaled = targets_scaler.fit_transform(targets)
+'''
+Standardization of features and targets improves training speed, performance, and stability.
+'''
+features_scaler = StandardScaler()  # instantiates a standard scaler class for features
+features_scaled = features_scaler.fit_transform(features)  # transforms features based on a normal distribution
+targets_scaler = StandardScaler()  # instantiates a standard scaler class for targets
+targets_scaled = targets_scaler.fit_transform(targets)  # transforms targets based on a normal distribution
 
 # convert features and targets to tensors
-features_tensor = torch.tensor(features_scaled, dtype=torch.float32)
-targets_tensor = torch.tensor(targets_scaled, dtype=torch.float32)
+features_tensor = torch.tensor(features_scaled, dtype=torch.float32)  # converts feature array into feature tensor
+targets_tensor = torch.tensor(targets_scaled, dtype=torch.float32)  # converts target array into target tensor
 
 # create dataset
 dataset = TensorDataset(features_tensor, targets_tensor)
 
 # 80/20 train/test split
-train_size = int(0.8*len(dataset))
-test_size = len(dataset) - train_size
-
-train_dataset, test_dataset = random_split(dataset, [train_size, test_size])
+'''
+Training Set: updates weights and biases
+Testing Set: tests the performace of the neural network, does not update weights and biases
+'''
+train_size = int(0.8*len(dataset))  # calculates number of total training inputs to be 80%
+test_size = len(dataset) - train_size  # calculates number of total testing inputs to be 20%
+train_dataset, test_dataset = random_split(dataset, [train_size, test_size])  # randomly splits the dataset based on training and testing sizes
 
 # data load the datasets
-train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
-test_loader = DataLoader(test_dataset, batch_size=32, shuffle=True)
+'''
+Prepares static datasets to be streamed into neural network in batches.
+'''
+train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)  # load training data
+test_loader = DataLoader(test_dataset, batch_size=32, shuffle=True)  # load testing data
 
-# define neural network
-class mpgnet(nn.Module):
-    def __init__(self):
-        super(mpgnet, self).__init__()
-        self.model = nn.Sequential(
-            nn.Linear(7, 64), # 7 input features
-            nn.ReLU(),
-            nn.Linear(64, 32),
-            nn.ReLU(),
-            nn.Linear(32, 1) # 1 output target
+#---Define Neural Network------------------------------------------------------------------------------------------------------------------------------------------#
+
+class mpgnet(nn.Module):  # starts the definition of a custom neural network module
+    def __init__(self):  # defines the constructor method
+        super(mpgnet, self).__init__()  # defines constructor method of parent class nn.Module
+        self.model = nn.Sequential(  # object that holds layers in a sequential container
+            nn.Linear(7, 64), # 7 input features, 64 output features
+            nn.ReLU(),  # introduces nonlinearity
+            nn.Linear(64, 32),  # 64 input features, 32 output features
+            nn.ReLU(),  # introduces nonlinearity
+            nn.Linear(32, 1) # 32 input features, 2 output target
         )
 
-    def forward(self, x):
-        return self.model(x)
+    def forward(self, x):  # defines sequence in model
+        return self.model(x)  # passes feature tensor into the model
     
 # initialize neural network
 model = mpgnet()
 
 # define loss and optimizer
-criterion = nn.MSELoss()
-optimizer = optim.Adam(model.parameters(), lr=0.001)
+'''
+Loss: quantifies errors of the model predictions
+Optimization: drives learning by minimizing loss
+Learning Rate: determines how much the neural network changes weights and biases
+'''
+criterion = nn.MSELoss() # initiates loss class as mean squared error
+optimizer = optim.Adam(model.parameters(), lr=0.001)  # sets up mechanism to adjust weights, sets learning rate
 
-# training loop
-epochs = 200
-train_losses, test_losses = [], []
+#---Training Loop--------------------------------------------------------------------------------------------------------------------------------------------------#
+'''
+Epochs: number of times training data is passed through to adjust weights and biases
+'''
+epochs = 200  # set number of epochs, or loops
+train_losses, test_losses = [], []  # creates empty lists for training and testing losses
 
-for epoch in range(epochs):
-    model.train()
-    running_loss = 0.0
-    for x_batch, y_batch in train_loader:
-        optimizer.zero_grad()
-        y_pred = model(x_batch)
-        loss = criterion(y_pred, y_batch)
-        loss.backward()
-        optimizer.step()
-        running_loss += loss.item()
-    train_losses.append(running_loss/len(train_loader))
+for epoch in range(epochs):  # loop for each epoch
+    model.train()  # prepares layers for training
+    running_loss = 0.0  # keeps track of total loss
+    for x_batch, y_batch in train_loader:  # batch of features, and batch of targets in each iteration
+        optimizer.zero_grad()  # resets gradients on each iteration
+        y_pred = model(x_batch)  # makes target predictions based on feature batch
+        loss = criterion(y_pred, y_batch)  # calculates mean squared error between the target predictions and actual target values
+        loss.backward()  # determines how much each layer affected the error and in what way
+        optimizer.step()  # applies changes determined
+        running_loss += loss.item() # add the loss value of the current batch to the running total loss
+    train_losses.append(running_loss/len(train_loader))  # calculates average loss of an epoch and adds it to the training losses list
 
     # evaluate test set
-    model.eval()
-    test_loss = 0.0
-    with torch.no_grad():
-        for x_batch, y_batch in test_loader:
-            y_pred = model(x_batch)
-            loss = criterion(y_pred, y_batch)
-            test_loss += loss.item()
-    test_losses.append(test_loss/len(test_loader))
+    model.eval()  # prepares layers for estimation
+    test_loss = 0.0  # keeps track of total loss
+    with torch.no_grad():  # tells the neural network to stop tracking gradients
+        for x_batch, y_batch in test_loader:  # batch of features, and batch of targets for each iteration
+            y_pred = model(x_batch)  # makes target predictions based on feature batch
+            loss = criterion(y_pred, y_batch)  # calculates mean squared error between the target predictions and actual target values
+            test_loss += loss.item()  # add the loss value of the current batch to the running total loss
+    test_losses.append(test_loss/len(test_loader))  # calculates average loss of an epoch and adds it to the testing losses list
 
-# plot training/testin MSE
-plt.figure()
-plt.plot(train_losses, label="Train Loss")
-plt.plot(test_losses, label="Test Loss")
-plt.xlabel("Epoch")
-plt.ylabel("MSE")
-plt.legend()
-plt.title("Training and Testing Loss")
+#---Plot Error-----------------------------------------------------------------------------------------------------------------------------------------------------#
 
-# evaluate performance
-model.eval()
-y_true, y_pred = [], []
+plt.figure() # initialize figure 1
+plt.plot(train_losses, label="Train Loss")  # plots progression of training losses
+plt.plot(test_losses, label="Test Loss")  # plots progression of testing losses
+plt.xlabel("Epoch")  # x-axis is the number of epochs passed
+plt.ylabel("MSE")  # y-axis is the mean squared error
+plt.legend()  # show legend
+plt.title("Training and Testing Loss")  # set title of figure 1
 
-with torch.no_grad():
-    for X_batch, y_batch in test_loader:
-        preds = model(X_batch)
-        y_true.append(y_batch)
-        y_pred.append(preds)
+#---Evaluate Performance-------------------------------------------------------------------------------------------------------------------------------------------#
 
-y_true = torch.cat(y_true).numpy()
-y_pred = torch.cat(y_pred).numpy()
+model.eval()  # prepares layers for estimation
+y_true, y_pred = [], []  # creates empty lists for true targets and true predictions
 
-# Undo normalization
-y_true = targets_scaler.inverse_transform(y_true)
-y_pred = targets_scaler.inverse_transform(y_pred)
+with torch.no_grad():  # tells the neural network to stop tracking gradients
+    for x_batch, y_batch in test_loader:  # batch of features, and batch of targets for each iteration
+        preds = model(x_batch)  # makes target predictions based on feature batch
+        y_true.append(y_batch) # adds actual target values to the actual target values list
+        y_pred.append(preds)  # adds predicted target values to the predicted target values list
 
-mae = np.mean(np.abs(y_true - y_pred))
-print(f"Average absolute error on test set: {mae:.2f} mpg")
+y_true = torch.cat(y_true).numpy()  # turns actual target values list into an array
+y_pred = torch.cat(y_pred).numpy()  # turns predicted target values list into an array
 
-# plot predictions versus actual values
-plt.figure()
-plt.scatter(y_true, y_pred, alpha=0.6)
+#---Plot Predictions Versus Actual Values--------------------------------------------------------------------------------------------------------------------------#
+
+y_true = targets_scaler.inverse_transform(y_true)  # undoes normalization of actual target values array
+y_pred = targets_scaler.inverse_transform(y_pred)  # undoes normalization of predicted target values array
+
+mae = np.mean(np.abs(y_true - y_pred))  # calculates average absolute error on test set
+
+plt.figure()  # initializes figure 2
+plt.scatter(y_true, y_pred, alpha=0.6)  # scatterplot of actual target values and predicted target values
 plt.plot([y_true.min(), y_true.max()],
          [y_true.min(), y_true.max()],
-         'r--')
-plt.xlabel("Actual MPG")
-plt.ylabel("Predicted MPG")
-plt.title("Predicted vs Actual MPG")
+         'r--')  # plots least squares line
+plt.xlabel("Actual MPG")  # x-axis is the actual target values
+plt.ylabel("Predicted MPG")  # y-axis is the predicted target values
+plt.title("Predicted vs Actual MPG")  # set title of figure 2
 
-# show plots
-plt.show()
+plt.show()  # show plots
+
+#---Test Code------------------------------------------------------------------------------------------------------------------------------------------------------#
