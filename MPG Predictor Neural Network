@@ -157,13 +157,22 @@ mae = np.mean(np.abs(y_true - y_pred))  # calculates average absolute error on t
 
 plt.figure()  # initializes figure 2
 plt.scatter(y_true, y_pred, alpha=0.6)  # scatterplot of actual target values and predicted target values
-plt.plot([y_true.min(), y_true.max()],
+plt.plot([y_true.min(), y_true.max()],  # plots least squares line
          [y_true.min(), y_true.max()],
-         'r--')  # plots least squares line
+         'r--')
 plt.xlabel("Actual MPG")  # x-axis is the actual target values
 plt.ylabel("Predicted MPG")  # y-axis is the predicted target values
 plt.title("Predicted vs Actual MPG")  # set title of figure 2
 
 plt.show()  # show plots
 
-#---Test Code------------------------------------------------------------------------------------------------------------------------------------------------------#
+#---Predict My Car-------------------------------------------------------------------------------------------------------------------------------------------------#
+
+my_car = np.array([[6, 226, 300, 4083, 6.4, 10, 3]])  # my cars specs
+my_car_scaled = features_scaler.fit_transform(my_car)  # scale car specs
+my_car_tensor = torch.tensor(my_car_scaled, dtype=torch.float32) # create a car spec tensor
+model.eval()  # prepares layers for estimation
+with torch.no_grad():  # tells neural network to stop tracking gradients
+    mpg_scaled = model(my_car_tensor)  # make prediction based on my cars specs
+mpg_pred = targets_scaler.inverse_transform(mpg_scaled.numpy())  # undo normalization of predicted mpg
+print(f"The predicted mpg for my 2010 Acura RL is: {mpg_pred}")
