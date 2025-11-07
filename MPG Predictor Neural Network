@@ -73,8 +73,12 @@ class mpgnet(nn.Module):  # starts the definition of a custom neural network mod
     def __init__(self):  # defines the constructor method
         super(mpgnet, self).__init__()  # defines constructor method of parent class nn.Module
         self.model = nn.Sequential(  # object that holds layers in a sequential container
-            nn.Linear(7, 64), # 7 input features, 64 output features
+            nn.Linear(7, 128),  # 7 input features, 128 output features
+            nn.BatchNorm1d(128),  # renormalizes output features
             nn.ReLU(),  # introduces nonlinearity
+            nn.Linear(128, 64),  # 128 input features, 64 output features
+            nn.ReLU(),  # introduces nonlinearity
+            nn.Dropout(0.1),  # introduces randomness into the input features
             nn.Linear(64, 32),  # 64 input features, 32 output features
             nn.ReLU(),  # introduces nonlinearity
             nn.Linear(32, 1) # 32 input features, 2 output target
@@ -93,13 +97,13 @@ Optimization: drives learning by minimizing loss
 Learning Rate: determines how much the neural network changes weights and biases
 '''
 criterion = nn.MSELoss() # initiates loss class as mean squared error
-optimizer = optim.Adam(model.parameters(), lr=0.001)  # sets up mechanism to adjust weights, sets learning rate
+optimizer = optim.Adam(model.parameters(), lr=0.0005)  # sets up mechanism to adjust weights, sets learning rate
 
 #---Training Loop--------------------------------------------------------------------------------------------------------------------------------------------------#
 '''
 Epochs: number of times training data is passed through to adjust weights and biases
 '''
-epochs = 200  # set number of epochs, or loops
+epochs = 1000  # set number of epochs, or loops
 train_losses, test_losses = [], []  # creates empty lists for training and testing losses
 
 for epoch in range(epochs):  # loop for each epoch
@@ -154,6 +158,7 @@ y_true = targets_scaler.inverse_transform(y_true)  # undoes normalization of act
 y_pred = targets_scaler.inverse_transform(y_pred)  # undoes normalization of predicted target values array
 
 mae = np.mean(np.abs(y_true - y_pred))  # calculates average absolute error on test set
+print(f"The Mean Absolute Error is: {mae}")
 
 plt.figure()  # initializes figure 2
 plt.scatter(y_true, y_pred, alpha=0.6)  # scatterplot of actual target values and predicted target values
@@ -168,11 +173,11 @@ plt.show()  # show plots
 
 #---Predict My Car-------------------------------------------------------------------------------------------------------------------------------------------------#
 
-my_car = np.array([[6, 226, 300, 4083, 6.4, 10, 3]])  # my cars specs
+my_car = np.array([[6, 183, 300, 4230, 5.3, 16, 2]])  # my cars specs
 my_car_scaled = features_scaler.fit_transform(my_car)  # scale car specs
 my_car_tensor = torch.tensor(my_car_scaled, dtype=torch.float32) # create a car spec tensor
 model.eval()  # prepares layers for estimation
 with torch.no_grad():  # tells neural network to stop tracking gradients
     mpg_scaled = model(my_car_tensor)  # make prediction based on my cars specs
 mpg_pred = targets_scaler.inverse_transform(mpg_scaled.numpy())  # undo normalization of predicted mpg
-print(f"The predicted mpg for my 2010 Acura RL is: {mpg_pred}")
+print(f"The predicted mpg for my car is: {mpg_pred}")
